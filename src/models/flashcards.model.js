@@ -11,7 +11,7 @@ module.exports = function (app) {
     {
       parentFolderId: { type: ObjectId },
       owner: { type: ObjectId },
-      flashcardName: { type: String },
+      name: { type: String },
       cards: { type: Array },
       sharedUsers: { type: String },
     },

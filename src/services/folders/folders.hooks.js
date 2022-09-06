@@ -13,13 +13,34 @@ const validateFolderDepth = async (context) => {
   }
 };
 
-const validate = () => (context) => {
-  const { data } = context;
-  if (!(typeof data.name === "string" && data.name.length)) {
+const validate = () => async (context) => {
+  const { data, method } = context;
+  const isCreate = method === "create";
+  const isPatch = method === "patch";
+
+  if (
+    ((isPatch && "name" in data) || isCreate) &&
+    !(typeof data.name === "string" && data.name.length)
+  ) {
     throw new Error("Name is a required non-empty field.");
   }
 
-  validateFolderDepth(context);
+  await validateFolderDepth(context);
+
+  return context;
+};
+
+const addChild = () => async (context) => {
+  const { result, app } = context;
+  if (result.parentFolderId) {
+    const parent = await app.service("folders").get(result.parentFolderId);
+
+    await app.service("folders").patch(result.parentFolderId, {
+      children: [...parent.children, { type: "folder", id: result._id }],
+    });
+
+    // if above fails, remove the created folder
+  }
 
   return context;
 };
@@ -43,7 +64,7 @@ const removeFolder = () => async (context) => {
       return v.type === "folder";
     });
 
-    const tobedeleted = await app.service("folders").remove(null, {
+    await app.service("folders").remove(null, {
       query: {
         _id: {
           $in: children.map((v) => {
@@ -52,7 +73,6 @@ const removeFolder = () => async (context) => {
         },
       },
     });
-
   }
 
   return context;
@@ -73,7 +93,7 @@ module.exports = {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [addChild()],
     update: [],
     patch: [],
     remove: [],
