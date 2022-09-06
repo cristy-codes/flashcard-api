@@ -1,10 +1,9 @@
 const validateFolderDepth = async (context) => {
-  // get parentfolder
   if (context.data.parentFolderId) {
     const parentFolder = await context.app
       .service("folders")
       .get(context.data.parentFolderId);
-    // check if parentfolder has a parentfolder, if true return error
+
     if (!parentFolder) {
       throw new Error("Parent folder does not exist.");
     }
@@ -14,7 +13,6 @@ const validateFolderDepth = async (context) => {
   }
 };
 
-// A validation hook for everything related to folders
 const validate = () => (context) => {
   const { data } = context;
   if (!(typeof data.name === "string" && data.name.length)) {
@@ -22,6 +20,40 @@ const validate = () => (context) => {
   }
 
   validateFolderDepth(context);
+
+  return context;
+};
+
+const removeFolder = () => async (context) => {
+  const { id, app, params } = context;
+  const isInternal = !params.provider;
+
+  if (!id && !isInternal) {
+    throw new Error("Folder ID is required.");
+  }
+
+  if (id) {
+    const folder = await app.service("folders").get(id);
+
+    if (!folder.children.length) {
+      return context;
+    }
+
+    const children = folder.children.filter((v) => {
+      return v.type === "folder";
+    });
+
+    const tobedeleted = await app.service("folders").remove(null, {
+      query: {
+        _id: {
+          $in: children.map((v) => {
+            return v.id;
+          }),
+        },
+      },
+    });
+
+  }
 
   return context;
 };
@@ -34,7 +66,7 @@ module.exports = {
     create: [validate()],
     update: [],
     patch: [validate()],
-    remove: [],
+    remove: [removeFolder()],
   },
 
   after: {
