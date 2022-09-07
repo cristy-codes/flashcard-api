@@ -44,6 +44,19 @@ const validate = () => async (context) => {
   return context;
 };
 
+const addChild = () => async (context) => {
+  const { result, app } = context;
+
+  const parent = await app.service("folders").get(result.parentFolderId);
+
+  await app.service("folders").patch(result.parentFolderId, {
+    children: [...parent.children, { type: "flashcard", id: result._id }],
+  });
+
+  return context;
+};
+
+
 module.exports = {
   before: {
     all: [],
@@ -59,7 +72,7 @@ module.exports = {
     all: [],
     find: [],
     get: [],
-    create: [],
+    create: [addChild()],
     update: [],
     patch: [],
     remove: [],
