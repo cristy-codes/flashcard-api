@@ -86,6 +86,18 @@ const addChild = () => async (context) => {
   return context;
 };
 
+const flashcardFromParentFolder = () => async (context) => {
+  const { id } = context;
+  const flashcard = await app.service("flashcards").get(id);
+  const parent = await app.service("folders").get(flashcard.parentFolderId);
+
+  const children = parent.children.filter((v) => v._id === id);
+
+  await app.service("folders").patch(parent, { children });
+
+  return context;
+};
+
 module.exports = {
   before: {
     all: [],
@@ -94,7 +106,7 @@ module.exports = {
     create: [validateOnCreate()],
     update: [],
     patch: [validateOnPatch()],
-    remove: [],
+    remove: [flashcardFromParentFolder()],
   },
 
   after: {
