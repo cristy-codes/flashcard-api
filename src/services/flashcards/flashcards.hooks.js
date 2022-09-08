@@ -1,10 +1,28 @@
-const validate = () => async (context) => {
+const { isObject, isString } = require("../../common/types");
+
+const validateCards = (cards) => {
+  if (Array.isArray(cards)) {
+    return cards.every((v) => {
+      return (
+        isObject(v) &&
+        isString(v.question) &&
+        isString(v.answer) &&
+        isString(v.bucket) &&
+        v.question &&
+        v.answer
+      );
+    });
+  }
+  return false;
+};
+
+const validateOnCreate = () => async (context) => {
   const { app, data } = context;
   if (!data.parentFolderId) {
     throw new Error("Flashcards must be in a folder.");
   }
 
-  if (!data.name) {
+  if (!isString(data.name) || !data.name) {
     throw new Error("Name is required.");
   }
 
@@ -23,24 +41,36 @@ const validate = () => async (context) => {
     throw new Error("Cannot create flashcards here.");
   }
 
-  if (Array.isArray(data.cards)) {
-    const checkCards = data.cards.every((v) => {
-      return (
-        typeof v === "object" &&
-        typeof v.question === "string" &&
-        typeof v.answer === "string" &&
-        typeof v.bucket === "string" &&
-        v.question &&
-        v.answer &&
-        !v.bucket
-      );
-    });
+  const checkCards = validateCards(data.cards);
 
-    if (!checkCards) {
-      throw new Error("Card is invalid.");
-    }
+  if (!checkCards) {
+    throw new Error("Cards are invalid.");
   }
 
+  return context;
+};
+
+const validateOnPatch = () => (context) => {
+  const { data } = context;
+
+  if (!isString(data.name) || !data.name) {
+    throw new Error("Name is required.");
+  }
+
+  if (data.parentFolderId) {
+    throw new Error("Unable to change folder.");
+  }
+
+  if (data.owner) {
+    throw new Error("Cannot change owner.");
+  }
+
+  if (data.cards) {
+    const checkCards = validateCards(data.cards);
+    if (!checkCards) {
+      throw new Error("Cards are invalid.");
+    }
+  }
   return context;
 };
 
@@ -56,15 +86,14 @@ const addChild = () => async (context) => {
   return context;
 };
 
-
 module.exports = {
   before: {
     all: [],
     find: [],
     get: [],
-    create: [validate()],
+    create: [validateOnCreate()],
     update: [],
-    patch: [],
+    patch: [validateOnPatch()],
     remove: [],
   },
 
