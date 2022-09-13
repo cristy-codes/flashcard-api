@@ -78,6 +78,22 @@ const removeFolder = () => async (context) => {
   return context;
 };
 
+const expandChildren = () => async (context) => {
+  const { result, app } = context;
+
+  if (result.children.length) {
+    const r = result.children.map((v) => {
+      return app
+        .service(v.type === "folder" ? "folders" : "flashcards")
+        .get(v.id)
+        .then((r) => ({ ...r, type: v.type }));
+    });
+
+    result.children = await Promise.all(r);
+  }
+  return context;
+};
+
 module.exports = {
   before: {
     all: [],
@@ -92,7 +108,7 @@ module.exports = {
   after: {
     all: [],
     find: [],
-    get: [],
+    get: [expandChildren()],
     create: [addChild()],
     update: [],
     patch: [],
